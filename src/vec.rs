@@ -5,7 +5,7 @@ use core::{
 use hash32;
 
 macro_rules! impl_vec {
-    ($flavor: ident, $into_iter_flavor: ident) => {
+    ($flavor: ident, $into_iter_flavor: ident, $($restrict: path)?) => {
 /// A fixed capacity [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
 ///
 /// # Examples
@@ -35,37 +35,14 @@ macro_rules! impl_vec {
 /// }
 /// assert_eq!(*vec, [7, 1, 2, 3]);
 /// ```
-pub struct $flavor<T, const N: usize> {
+pub struct $flavor<T: $($restrict)*, const N: usize>  {
     buffer: [MaybeUninit<T>; N],
     len: usize,
 }
 
-impl<T, const N: usize> $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> $flavor<T, N> {
     const INIT: MaybeUninit<T> = MaybeUninit::uninit();
 
-    /// Constructs a new, empty vector with a fixed capacity of `N`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use heapless::Vec;
-    ///
-    /// // allocate the vector on the stack
-    /// let mut x: Vec<u8, 16> = Vec::new();
-    ///
-    /// // allocate the vector in a static variable
-    /// static mut X: Vec<u8, 16> = Vec::new();
-    /// ```
-    /// `Vec` `const` constructor; wrap the returned value in [`Vec`](../struct.Vec.html)
-    pub const fn new() -> Self {
-        // Const assert N >= 0
-        crate::sealed::greater_than_eq_0::<N>();
-
-        Self {
-            buffer: [Self::INIT; N],
-            len: 0,
-        }
-    }
 
     /// Constructs a new vector with a fixed capacity of `N` and fills it
     /// with the provided slice.
@@ -159,10 +136,6 @@ impl<T, const N: usize> $flavor<T, N> {
         unsafe { slice::from_raw_parts_mut(self.buffer.as_mut_ptr() as *mut T, self.len) }
     }
 
-    /// Returns the maximum number of elements the vector can hold.
-    pub const fn capacity(&self) -> usize {
-        N
-    }
 
     /// Clears the vector, removing all values.
     pub fn clear(&mut self) {
@@ -541,13 +514,13 @@ impl<T, const N: usize> $flavor<T, N> {
 
 // Trait implementations
 
-impl<T, const N: usize> Default for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> Default for $flavor<T, N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T, const N: usize> fmt::Debug for $flavor<T, N>
+impl<T: $($restrict)*, const N: usize> fmt::Debug for $flavor<T, N>
 where
     T: fmt::Debug,
 {
@@ -565,7 +538,7 @@ impl<const N: usize> fmt::Write for $flavor<u8, N> {
     }
 }
 
-impl<'a, T: Clone, const N: usize> TryFrom<&'a [T]> for $flavor<T, N> {
+impl<'a, T: Clone $(+ $restrict)*, const N: usize> TryFrom<&'a [T]> for $flavor<T, N> {
     type Error = ();
 
     fn try_from(slice: &'a [T]) -> Result<Self, Self::Error> {
@@ -573,7 +546,7 @@ impl<'a, T: Clone, const N: usize> TryFrom<&'a [T]> for $flavor<T, N> {
     }
 }
 
-impl<T, const N: usize> Extend<T> for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> Extend<T> for $flavor<T, N> {
     fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = T>,
@@ -594,7 +567,7 @@ where
     }
 }
 
-impl<T, const N: usize> hash::Hash for $flavor<T, N>
+impl<T: $($restrict)*, const N: usize> hash::Hash for $flavor<T, N>
 where
     T: core::hash::Hash,
 {
@@ -603,7 +576,7 @@ where
     }
 }
 
-impl<T, const N: usize> hash32::Hash for $flavor<T, N>
+impl<T: $($restrict)*, const N: usize> hash32::Hash for $flavor<T, N>
 where
     T: hash32::Hash,
 {
@@ -612,7 +585,7 @@ where
     }
 }
 
-impl<'a, T, const N: usize> IntoIterator for &'a $flavor<T, N> {
+impl<'a, T: $($restrict)*, const N: usize> IntoIterator for &'a $flavor<T, N> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -621,7 +594,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a $flavor<T, N> {
     }
 }
 
-impl<'a, T, const N: usize> IntoIterator for &'a mut $flavor<T, N> {
+impl<'a, T: $($restrict)*, const N: usize> IntoIterator for &'a mut $flavor<T, N> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -630,7 +603,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut $flavor<T, N> {
     }
 }
 
-impl<T, const N: usize> FromIterator<T> for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> FromIterator<T> for $flavor<T, N> {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -649,12 +622,12 @@ impl<T, const N: usize> FromIterator<T> for $flavor<T, N> {
 ///
 /// [`Vec`]: (https://doc.rust-lang.org/std/vec/struct.Vec.html)
 ///
-pub struct $into_iter_flavor<T, const N: usize> {
+pub struct $into_iter_flavor<T: $($restrict)*, const N: usize> {
     vec: $flavor<T, N>,
     next: usize,
 }
 
-impl<T, const N: usize> Iterator for $into_iter_flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> Iterator for $into_iter_flavor<T, N> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if self.next < self.vec.len() {
@@ -669,7 +642,7 @@ impl<T, const N: usize> Iterator for $into_iter_flavor<T, N> {
     }
 }
 
-impl<T, const N: usize> Clone for $into_iter_flavor<T, N>
+impl<T: $($restrict)*, const N: usize> Clone for $into_iter_flavor<T, N>
 where
     T: Clone,
 {
@@ -690,7 +663,7 @@ where
     }
 }
 
-impl<T, const N: usize> IntoIterator for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> IntoIterator for $flavor<T, N> {
     type Item = T;
     type IntoIter = $into_iter_flavor<T, N>;
 
@@ -699,9 +672,9 @@ impl<T, const N: usize> IntoIterator for $flavor<T, N> {
     }
 }
 
-impl<A, B, const N1: usize, const N2: usize> PartialEq<$flavor<B, N2>> for $flavor<A, N1>
+impl<A, B: $($restrict)*, const N1: usize, const N2: usize> PartialEq<$flavor<B, N2>> for $flavor<A, N1>
 where
-    A: PartialEq<B>,
+    A: PartialEq<B> $( + $restrict)*,
 {
     fn eq(&self, other: &$flavor<B, N2>) -> bool {
         <[A]>::eq(self, &**other)
@@ -711,7 +684,7 @@ where
 // Vec<A, N> == [B]
 impl<A, B, const N: usize> PartialEq<[B]> for $flavor<A, N>
 where
-    A: PartialEq<B>,
+    A: PartialEq<B> $( + $restrict)*,
 {
     fn eq(&self, other: &[B]) -> bool {
         <[A]>::eq(self, &other[..])
@@ -721,7 +694,7 @@ where
 // $flavor<A, N> == &[B]
 impl<A, B, const N: usize> PartialEq<&[B]> for $flavor<A, N>
 where
-    A: PartialEq<B>,
+    A: PartialEq<B> $( + $restrict)*,
 {
     fn eq(&self, other: &&[B]) -> bool {
         <[A]>::eq(self, &other[..])
@@ -731,7 +704,7 @@ where
 // $flavor<A, N> == &mut [B]
 impl<A, B, const N: usize> PartialEq<&mut [B]> for $flavor<A, N>
 where
-    A: PartialEq<B>,
+    A: PartialEq<B> $( + $restrict)*,
 {
     fn eq(&self, other: &&mut [B]) -> bool {
         <[A]>::eq(self, &other[..])
@@ -742,7 +715,7 @@ where
 // Equality does not require equal capacity
 impl<A, B, const N: usize, const M: usize> PartialEq<[B; M]> for $flavor<A, N>
 where
-    A: PartialEq<B>,
+    A: PartialEq<B> $( + $restrict)*,
 {
     fn eq(&self, other: &[B; M]) -> bool {
         <[A]>::eq(self, &other[..])
@@ -753,7 +726,7 @@ where
 // Equality does not require equal capacity
 impl<A, B, const N: usize, const M: usize> PartialEq<&[B; M]> for $flavor<A, N>
 where
-    A: PartialEq<B>,
+    A: PartialEq<B> $( + $restrict)*,
 {
     fn eq(&self, other: &&[B; M]) -> bool {
         <[A]>::eq(self, &other[..])
@@ -761,9 +734,9 @@ where
 }
 
 // Implements Eq if underlying data is Eq
-impl<T, const N: usize> Eq for $flavor<T, N> where T: Eq {}
+impl<T: $($restrict)*, const N: usize> Eq for $flavor<T, N> where T: Eq {}
 
-impl<T, const N1: usize, const N2: usize> PartialOrd<$flavor<T, N2>> for $flavor<T, N1>
+impl<T: $($restrict)*, const N1: usize, const N2: usize> PartialOrd<$flavor<T, N2>> for $flavor<T, N1>
 where
     T: PartialOrd,
 {
@@ -772,7 +745,7 @@ where
     }
 }
 
-impl<T, const N: usize> Ord for $flavor<T, N>
+impl<T: $($restrict)*, const N: usize> Ord for $flavor<T, N>
 where
     T: Ord,
 {
@@ -782,7 +755,7 @@ where
     }
 }
 
-impl<T, const N: usize> ops::Deref for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> ops::Deref for $flavor<T, N> {
     type Target = [T];
 
     fn deref(&self) -> &[T] {
@@ -790,41 +763,41 @@ impl<T, const N: usize> ops::Deref for $flavor<T, N> {
     }
 }
 
-impl<T, const N: usize> ops::DerefMut for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> ops::DerefMut for $flavor<T, N> {
     fn deref_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
     }
 }
 
-impl<T, const N: usize> AsRef<$flavor<T, N>> for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> AsRef<$flavor<T, N>> for $flavor<T, N> {
     #[inline]
     fn as_ref(&self) -> &Self {
         self
     }
 }
 
-impl<T, const N: usize> AsMut<$flavor<T, N>> for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> AsMut<$flavor<T, N>> for $flavor<T, N> {
     #[inline]
     fn as_mut(&mut self) -> &mut Self {
         self
     }
 }
 
-impl<T, const N: usize> AsRef<[T]> for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> AsRef<[T]> for $flavor<T, N> {
     #[inline]
     fn as_ref(&self) -> &[T] {
         self
     }
 }
 
-impl<T, const N: usize> AsMut<[T]> for $flavor<T, N> {
+impl<T: $($restrict)*, const N: usize> AsMut<[T]> for $flavor<T, N> {
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
 }
 
-impl<T, const N: usize> Clone for $flavor<T, N>
+impl<T: $($restrict)*, const N: usize> Clone for $flavor<T, N>
 where
     T: Clone,
 {
@@ -836,7 +809,39 @@ where
     };
 }
 
-impl_vec!(Vec, VecIntoIter);
+impl_vec!(Vec, VecIntoIter,);
+
+impl<T, const N: usize> Vec<T, N> {
+
+    /// Constructs a new, empty vector with a fixed capacity of `N`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use heapless::Vec;
+    ///
+    /// // allocate the vector on the stack
+    /// let mut x: Vec<u8, 16> = Vec::new();
+    ///
+    /// // allocate the vector in a static variable
+    /// static mut X: Vec<u8, 16> = Vec::new();
+    /// ```
+    /// `Vec` `const` constructor; wrap the returned value in [`Vec`](../struct.Vec.html)
+    pub const fn new() -> Self {
+        // Const assert N >= 0
+        crate::sealed::greater_than_eq_0::<N>();
+
+        Self {
+            buffer: [Self::INIT; N],
+            len: 0,
+        }
+    }
+    /// Returns the maximum number of elements the vector can hold.
+    pub const fn capacity(&self) -> usize {
+        N
+    }
+
+}
 
 impl<T, const N: usize> Drop for Vec<T, N> {
     fn drop(&mut self) {
@@ -858,8 +863,40 @@ impl<T, const N: usize> Drop for VecIntoIter<T, N> {
     }
 }
 
-impl_vec!(CopyVec, CopyVecIntoIter);
+impl_vec!(CopyVec, CopyVecIntoIter, Copy);
+impl<T: Copy, const N: usize> CopyVec<T, N> {
 
+    /// Constructs a new, empty vector with a fixed capacity of `N`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use heapless::Vec;
+    ///
+    /// // allocate the vector on the stack
+    /// let mut x: Vec<u8, 16> = Vec::new();
+    ///
+    /// // allocate the vector in a static variable
+    /// static mut X: Vec<u8, 16> = Vec::new();
+    /// ```
+    /// `Vec` `const` constructor; wrap the returned value in [`Vec`](../struct.Vec.html)
+    pub fn new() -> Self {
+        // Const assert N >= 0
+        crate::sealed::greater_than_eq_0::<N>();
+
+        Self {
+            buffer: [Self::INIT; N],
+            len: 0,
+        }
+    }
+
+    /// Returns the maximum number of elements the vector can hold.
+    pub fn capacity(&self) -> usize {
+        N
+    }
+
+
+}
 impl<T: Copy, const N: usize> Copy for CopyVec<T, N>  {
 
 }
@@ -870,10 +907,7 @@ impl<T: Copy, const N: usize> Copy for CopyVecIntoIter<T, N>  {
 macro_rules! vec_test {
     ($flavor: ident, $flavor_path: path) => {
         use $flavor_path;
-    #[test]
-    fn static_new() {
-        static mut _V: $flavor<i32, 4> = $flavor::new();
-    }
+
 
     #[test]
     fn stack_new() {
@@ -1222,6 +1256,11 @@ mod vec_tests {
 
             static mut COUNT: i32 = 0;
         };
+    }
+
+    #[test]
+    fn static_new() {
+        static mut _V: Vec<i32, 4> = Vec::new();
     }
 
     #[test]
