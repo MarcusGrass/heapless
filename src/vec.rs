@@ -4,6 +4,8 @@ use core::{
 };
 use hash32;
 
+macro_rules! impl_vec {
+    ($flavor: ident, $into_iter_flavor: ident) => {
 /// A fixed capacity [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
 ///
 /// # Examples
@@ -33,12 +35,12 @@ use hash32;
 /// }
 /// assert_eq!(*vec, [7, 1, 2, 3]);
 /// ```
-pub struct Vec<T, const N: usize> {
+pub struct $flavor<T, const N: usize> {
     buffer: [MaybeUninit<T>; N],
     len: usize,
 }
 
-impl<T, const N: usize> Vec<T, N> {
+impl<T, const N: usize> $flavor<T, N> {
     const INIT: MaybeUninit<T> = MaybeUninit::uninit();
 
     /// Constructs a new, empty vector with a fixed capacity of `N`
@@ -81,7 +83,7 @@ impl<T, const N: usize> Vec<T, N> {
     where
         T: Clone,
     {
-        let mut v = Vec::new();
+        let mut v = $flavor::new();
         v.extend_from_slice(other)?;
         Ok(v)
     }
@@ -539,13 +541,13 @@ impl<T, const N: usize> Vec<T, N> {
 
 // Trait implementations
 
-impl<T, const N: usize> Default for Vec<T, N> {
+impl<T, const N: usize> Default for $flavor<T, N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T, const N: usize> fmt::Debug for Vec<T, N>
+impl<T, const N: usize> fmt::Debug for $flavor<T, N>
 where
     T: fmt::Debug,
 {
@@ -554,7 +556,7 @@ where
     }
 }
 
-impl<const N: usize> fmt::Write for Vec<u8, N> {
+impl<const N: usize> fmt::Write for $flavor<u8, N> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         match self.extend_from_slice(s.as_bytes()) {
             Ok(()) => Ok(()),
@@ -563,24 +565,15 @@ impl<const N: usize> fmt::Write for Vec<u8, N> {
     }
 }
 
-impl<T, const N: usize> Drop for Vec<T, N> {
-    fn drop(&mut self) {
-        // We drop each element used in the vector by turning into a &mut[T]
-        unsafe {
-            ptr::drop_in_place(self.as_mut_slice());
-        }
-    }
-}
-
-impl<'a, T: Clone, const N: usize> TryFrom<&'a [T]> for Vec<T, N> {
+impl<'a, T: Clone, const N: usize> TryFrom<&'a [T]> for $flavor<T, N> {
     type Error = ();
 
     fn try_from(slice: &'a [T]) -> Result<Self, Self::Error> {
-        Vec::from_slice(slice)
+        $flavor::from_slice(slice)
     }
 }
 
-impl<T, const N: usize> Extend<T> for Vec<T, N> {
+impl<T, const N: usize> Extend<T> for $flavor<T, N> {
     fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = T>,
@@ -589,7 +582,7 @@ impl<T, const N: usize> Extend<T> for Vec<T, N> {
     }
 }
 
-impl<'a, T, const N: usize> Extend<&'a T> for Vec<T, N>
+impl<'a, T, const N: usize> Extend<&'a T> for $flavor<T, N>
 where
     T: 'a + Copy,
 {
@@ -601,7 +594,7 @@ where
     }
 }
 
-impl<T, const N: usize> hash::Hash for Vec<T, N>
+impl<T, const N: usize> hash::Hash for $flavor<T, N>
 where
     T: core::hash::Hash,
 {
@@ -610,7 +603,7 @@ where
     }
 }
 
-impl<T, const N: usize> hash32::Hash for Vec<T, N>
+impl<T, const N: usize> hash32::Hash for $flavor<T, N>
 where
     T: hash32::Hash,
 {
@@ -619,7 +612,7 @@ where
     }
 }
 
-impl<'a, T, const N: usize> IntoIterator for &'a Vec<T, N> {
+impl<'a, T, const N: usize> IntoIterator for &'a $flavor<T, N> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -628,7 +621,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a Vec<T, N> {
     }
 }
 
-impl<'a, T, const N: usize> IntoIterator for &'a mut Vec<T, N> {
+impl<'a, T, const N: usize> IntoIterator for &'a mut $flavor<T, N> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -637,12 +630,12 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut Vec<T, N> {
     }
 }
 
-impl<T, const N: usize> FromIterator<T> for Vec<T, N> {
+impl<T, const N: usize> FromIterator<T> for $flavor<T, N> {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
     {
-        let mut vec = Vec::new();
+        let mut vec = $flavor::new();
         for i in iter {
             vec.push(i).ok().expect("Vec::from_iter overflow");
         }
@@ -656,12 +649,12 @@ impl<T, const N: usize> FromIterator<T> for Vec<T, N> {
 ///
 /// [`Vec`]: (https://doc.rust-lang.org/std/vec/struct.Vec.html)
 ///
-pub struct IntoIter<T, const N: usize> {
-    vec: Vec<T, N>,
+pub struct $into_iter_flavor<T, const N: usize> {
+    vec: $flavor<T, N>,
     next: usize,
 }
 
-impl<T, const N: usize> Iterator for IntoIter<T, N> {
+impl<T, const N: usize> Iterator for $into_iter_flavor<T, N> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if self.next < self.vec.len() {
@@ -676,12 +669,12 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
     }
 }
 
-impl<T, const N: usize> Clone for IntoIter<T, N>
+impl<T, const N: usize> Clone for $into_iter_flavor<T, N>
 where
     T: Clone,
 {
     fn clone(&self) -> Self {
-        let mut vec = Vec::new();
+        let mut vec = $flavor::new();
 
         if self.next < self.vec.len() {
             let s = unsafe {
@@ -697,7 +690,164 @@ where
     }
 }
 
-impl<T, const N: usize> Drop for IntoIter<T, N> {
+impl<T, const N: usize> IntoIterator for $flavor<T, N> {
+    type Item = T;
+    type IntoIter = $into_iter_flavor<T, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        $into_iter_flavor { vec: self, next: 0 }
+    }
+}
+
+impl<A, B, const N1: usize, const N2: usize> PartialEq<$flavor<B, N2>> for $flavor<A, N1>
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &$flavor<B, N2>) -> bool {
+        <[A]>::eq(self, &**other)
+    }
+}
+
+// Vec<A, N> == [B]
+impl<A, B, const N: usize> PartialEq<[B]> for $flavor<A, N>
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &[B]) -> bool {
+        <[A]>::eq(self, &other[..])
+    }
+}
+
+// $flavor<A, N> == &[B]
+impl<A, B, const N: usize> PartialEq<&[B]> for $flavor<A, N>
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &&[B]) -> bool {
+        <[A]>::eq(self, &other[..])
+    }
+}
+
+// $flavor<A, N> == &mut [B]
+impl<A, B, const N: usize> PartialEq<&mut [B]> for $flavor<A, N>
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &&mut [B]) -> bool {
+        <[A]>::eq(self, &other[..])
+    }
+}
+
+// $flavor<A, N> == [B; M]
+// Equality does not require equal capacity
+impl<A, B, const N: usize, const M: usize> PartialEq<[B; M]> for $flavor<A, N>
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &[B; M]) -> bool {
+        <[A]>::eq(self, &other[..])
+    }
+}
+
+// $flavor<A, N> == &[B; M]
+// Equality does not require equal capacity
+impl<A, B, const N: usize, const M: usize> PartialEq<&[B; M]> for $flavor<A, N>
+where
+    A: PartialEq<B>,
+{
+    fn eq(&self, other: &&[B; M]) -> bool {
+        <[A]>::eq(self, &other[..])
+    }
+}
+
+// Implements Eq if underlying data is Eq
+impl<T, const N: usize> Eq for $flavor<T, N> where T: Eq {}
+
+impl<T, const N1: usize, const N2: usize> PartialOrd<$flavor<T, N2>> for $flavor<T, N1>
+where
+    T: PartialOrd,
+{
+    fn partial_cmp(&self, other: &$flavor<T, N2>) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&**self, &**other)
+    }
+}
+
+impl<T, const N: usize> Ord for $flavor<T, N>
+where
+    T: Ord,
+{
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ord::cmp(&**self, &**other)
+    }
+}
+
+impl<T, const N: usize> ops::Deref for $flavor<T, N> {
+    type Target = [T];
+
+    fn deref(&self) -> &[T] {
+        self.as_slice()
+    }
+}
+
+impl<T, const N: usize> ops::DerefMut for $flavor<T, N> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        self.as_mut_slice()
+    }
+}
+
+impl<T, const N: usize> AsRef<$flavor<T, N>> for $flavor<T, N> {
+    #[inline]
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<T, const N: usize> AsMut<$flavor<T, N>> for $flavor<T, N> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
+}
+
+impl<T, const N: usize> AsRef<[T]> for $flavor<T, N> {
+    #[inline]
+    fn as_ref(&self) -> &[T] {
+        self
+    }
+}
+
+impl<T, const N: usize> AsMut<[T]> for $flavor<T, N> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [T] {
+        self
+    }
+}
+
+impl<T, const N: usize> Clone for $flavor<T, N>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        self.clone()
+    }
+}
+
+    };
+}
+
+impl_vec!(Vec, VecIntoIter);
+
+impl<T, const N: usize> Drop for Vec<T, N> {
+    fn drop(&mut self) {
+        // We drop each element used in the vector by turning into a &mut[T]
+        unsafe {
+            ptr::drop_in_place(self.as_mut_slice());
+        }
+    }
+}
+
+impl<T, const N: usize> Drop for VecIntoIter<T, N> {
     fn drop(&mut self) {
         unsafe {
             // Drop all the elements that have not been moved out of vec
@@ -708,167 +858,31 @@ impl<T, const N: usize> Drop for IntoIter<T, N> {
     }
 }
 
-impl<T, const N: usize> IntoIterator for Vec<T, N> {
-    type Item = T;
-    type IntoIter = IntoIter<T, N>;
+impl_vec!(CopyVec, CopyVecIntoIter);
 
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter { vec: self, next: 0 }
-    }
+impl<T: Copy, const N: usize> Copy for CopyVec<T, N>  {
+
 }
+impl<T: Copy, const N: usize> Copy for CopyVecIntoIter<T, N>  {
 
-impl<A, B, const N1: usize, const N2: usize> PartialEq<Vec<B, N2>> for Vec<A, N1>
-where
-    A: PartialEq<B>,
-{
-    fn eq(&self, other: &Vec<B, N2>) -> bool {
-        <[A]>::eq(self, &**other)
-    }
 }
-
-// Vec<A, N> == [B]
-impl<A, B, const N: usize> PartialEq<[B]> for Vec<A, N>
-where
-    A: PartialEq<B>,
-{
-    fn eq(&self, other: &[B]) -> bool {
-        <[A]>::eq(self, &other[..])
-    }
-}
-
-// Vec<A, N> == &[B]
-impl<A, B, const N: usize> PartialEq<&[B]> for Vec<A, N>
-where
-    A: PartialEq<B>,
-{
-    fn eq(&self, other: &&[B]) -> bool {
-        <[A]>::eq(self, &other[..])
-    }
-}
-
-// Vec<A, N> == &mut [B]
-impl<A, B, const N: usize> PartialEq<&mut [B]> for Vec<A, N>
-where
-    A: PartialEq<B>,
-{
-    fn eq(&self, other: &&mut [B]) -> bool {
-        <[A]>::eq(self, &other[..])
-    }
-}
-
-// Vec<A, N> == [B; M]
-// Equality does not require equal capacity
-impl<A, B, const N: usize, const M: usize> PartialEq<[B; M]> for Vec<A, N>
-where
-    A: PartialEq<B>,
-{
-    fn eq(&self, other: &[B; M]) -> bool {
-        <[A]>::eq(self, &other[..])
-    }
-}
-
-// Vec<A, N> == &[B; M]
-// Equality does not require equal capacity
-impl<A, B, const N: usize, const M: usize> PartialEq<&[B; M]> for Vec<A, N>
-where
-    A: PartialEq<B>,
-{
-    fn eq(&self, other: &&[B; M]) -> bool {
-        <[A]>::eq(self, &other[..])
-    }
-}
-
-// Implements Eq if underlying data is Eq
-impl<T, const N: usize> Eq for Vec<T, N> where T: Eq {}
-
-impl<T, const N1: usize, const N2: usize> PartialOrd<Vec<T, N2>> for Vec<T, N1>
-where
-    T: PartialOrd,
-{
-    fn partial_cmp(&self, other: &Vec<T, N2>) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&**self, &**other)
-    }
-}
-
-impl<T, const N: usize> Ord for Vec<T, N>
-where
-    T: Ord,
-{
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        Ord::cmp(&**self, &**other)
-    }
-}
-
-impl<T, const N: usize> ops::Deref for Vec<T, N> {
-    type Target = [T];
-
-    fn deref(&self) -> &[T] {
-        self.as_slice()
-    }
-}
-
-impl<T, const N: usize> ops::DerefMut for Vec<T, N> {
-    fn deref_mut(&mut self) -> &mut [T] {
-        self.as_mut_slice()
-    }
-}
-
-impl<T, const N: usize> AsRef<Vec<T, N>> for Vec<T, N> {
-    #[inline]
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
-impl<T, const N: usize> AsMut<Vec<T, N>> for Vec<T, N> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut Self {
-        self
-    }
-}
-
-impl<T, const N: usize> AsRef<[T]> for Vec<T, N> {
-    #[inline]
-    fn as_ref(&self) -> &[T] {
-        self
-    }
-}
-
-impl<T, const N: usize> AsMut<[T]> for Vec<T, N> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut [T] {
-        self
-    }
-}
-
-impl<T, const N: usize> Clone for Vec<T, N>
-where
-    T: Clone,
-{
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use crate::Vec;
-    use core::fmt::Write;
-
+macro_rules! vec_test {
+    ($flavor: ident, $flavor_path: path) => {
+        use $flavor_path;
     #[test]
     fn static_new() {
-        static mut _V: Vec<i32, 4> = Vec::new();
+        static mut _V: $flavor<i32, 4> = $flavor::new();
     }
 
     #[test]
     fn stack_new() {
-        let mut _v: Vec<i32, 4> = Vec::new();
+        let mut _v: $flavor<i32, 4> = $flavor::new();
     }
 
     #[test]
     fn is_full_empty() {
-        let mut v: Vec<i32, 4> = Vec::new();
+        let mut v: $flavor<i32, 4> = $flavor::new();
 
         assert!(v.is_empty());
         assert!(!v.is_full());
@@ -889,6 +903,303 @@ mod tests {
         assert!(!v.is_empty());
         assert!(v.is_full());
     }
+
+
+
+    #[test]
+    fn eq() {
+        let mut xs: $flavor<i32, 4> = $flavor::new();
+        let mut ys: $flavor<i32, 8> = $flavor::new();
+
+        assert_eq!(xs, ys);
+
+        xs.push(1).unwrap();
+        ys.push(1).unwrap();
+
+        assert_eq!(xs, ys);
+    }
+
+    #[test]
+    fn cmp() {
+        let mut xs: $flavor<i32, 4> = $flavor::new();
+        let mut ys: $flavor<i32, 4> = $flavor::new();
+
+        assert_eq!(xs, ys);
+
+        xs.push(1).unwrap();
+        ys.push(2).unwrap();
+
+        assert!(xs < ys);
+    }
+
+    #[test]
+    fn cmp_heterogenous_size() {
+        let mut xs: $flavor<i32, 4> = $flavor::new();
+        let mut ys: $flavor<i32, 8> = $flavor::new();
+
+        assert_eq!(xs, ys);
+
+        xs.push(1).unwrap();
+        ys.push(2).unwrap();
+
+        assert!(xs < ys);
+    }
+
+    #[test]
+    fn full() {
+        let mut v: $flavor<i32, 4> = $flavor::new();
+
+        v.push(0).unwrap();
+        v.push(1).unwrap();
+        v.push(2).unwrap();
+        v.push(3).unwrap();
+
+        assert!(v.push(4).is_err());
+    }
+
+    #[test]
+    fn iter() {
+        let mut v: $flavor<i32, 4> = $flavor::new();
+
+        v.push(0).unwrap();
+        v.push(1).unwrap();
+        v.push(2).unwrap();
+        v.push(3).unwrap();
+
+        let mut items = v.iter();
+
+        assert_eq!(items.next(), Some(&0));
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), Some(&3));
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn iter_mut() {
+        let mut v: $flavor<i32, 4> = $flavor::new();
+
+        v.push(0).unwrap();
+        v.push(1).unwrap();
+        v.push(2).unwrap();
+        v.push(3).unwrap();
+
+        let mut items = v.iter_mut();
+
+        assert_eq!(items.next(), Some(&mut 0));
+        assert_eq!(items.next(), Some(&mut 1));
+        assert_eq!(items.next(), Some(&mut 2));
+        assert_eq!(items.next(), Some(&mut 3));
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn collect_from_iter() {
+        let slice = &[1, 2, 3];
+        let vec: $flavor<i32, 4> = slice.iter().cloned().collect();
+        assert_eq!(&vec, slice);
+    }
+
+    #[test]
+    #[should_panic]
+    fn collect_from_iter_overfull() {
+        let slice = &[1, 2, 3];
+        let _vec = slice.iter().cloned().collect::<$flavor<_, 2>>();
+    }
+
+    #[test]
+    fn iter_move() {
+        let mut v: $flavor<i32, 4> = $flavor::new();
+        v.push(0).unwrap();
+        v.push(1).unwrap();
+        v.push(2).unwrap();
+        v.push(3).unwrap();
+
+        let mut items = v.into_iter();
+
+        assert_eq!(items.next(), Some(0));
+        assert_eq!(items.next(), Some(1));
+        assert_eq!(items.next(), Some(2));
+        assert_eq!(items.next(), Some(3));
+        assert_eq!(items.next(), None);
+    }
+
+
+
+    #[test]
+    fn push_and_pop() {
+        let mut v: $flavor<i32, 4> = $flavor::new();
+        assert_eq!(v.len(), 0);
+
+        assert_eq!(v.pop(), None);
+        assert_eq!(v.len(), 0);
+
+        v.push(0).unwrap();
+        assert_eq!(v.len(), 1);
+
+        assert_eq!(v.pop(), Some(0));
+        assert_eq!(v.len(), 0);
+
+        assert_eq!(v.pop(), None);
+        assert_eq!(v.len(), 0);
+    }
+
+    #[test]
+    fn resize_size_limit() {
+        let mut v: $flavor<u8, 4> = $flavor::new();
+
+        v.resize(0, 0).unwrap();
+        v.resize(4, 0).unwrap();
+        v.resize(5, 0).err().expect("full");
+    }
+
+    #[test]
+    fn resize_length_cases() {
+        let mut v: $flavor<u8, 4> = $flavor::new();
+
+        assert_eq!(v.len(), 0);
+
+        // Grow by 1
+        v.resize(1, 0).unwrap();
+        assert_eq!(v.len(), 1);
+
+        // Grow by 2
+        v.resize(3, 0).unwrap();
+        assert_eq!(v.len(), 3);
+
+        // Resize to current size
+        v.resize(3, 0).unwrap();
+        assert_eq!(v.len(), 3);
+
+        // Shrink by 1
+        v.resize(2, 0).unwrap();
+        assert_eq!(v.len(), 2);
+
+        // Shrink by 2
+        v.resize(0, 0).unwrap();
+        assert_eq!(v.len(), 0);
+    }
+
+    #[test]
+    fn resize_contents() {
+        let mut v: $flavor<u8, 4> = $flavor::new();
+
+        // New entries take supplied value when growing
+        v.resize(1, 17).unwrap();
+        assert_eq!(v[0], 17);
+
+        // Old values aren't changed when growing
+        v.resize(2, 18).unwrap();
+        assert_eq!(v[0], 17);
+        assert_eq!(v[1], 18);
+
+        // Old values aren't changed when length unchanged
+        v.resize(2, 0).unwrap();
+        assert_eq!(v[0], 17);
+        assert_eq!(v[1], 18);
+
+        // Old values aren't changed when shrinking
+        v.resize(1, 0).unwrap();
+        assert_eq!(v[0], 17);
+    }
+
+    #[test]
+    fn resize_default() {
+        let mut v: $flavor<u8, 4> = $flavor::new();
+
+        // resize_default is implemented using resize, so just check the
+        // correct value is being written.
+        v.resize_default(1).unwrap();
+        assert_eq!(v[0], 0);
+    }
+
+    #[test]
+    fn write() {
+        let mut v: $flavor<u8, 4> = $flavor::new();
+        write!(v, "{:x}", 1234).unwrap();
+        assert_eq!(&v[..], b"4d2");
+    }
+
+    #[test]
+    fn extend_from_slice() {
+        let mut v: $flavor<u8, 4> = $flavor::new();
+        assert_eq!(v.len(), 0);
+        v.extend_from_slice(&[1, 2]).unwrap();
+        assert_eq!(v.len(), 2);
+        assert_eq!(v.as_slice(), &[1, 2]);
+        v.extend_from_slice(&[3]).unwrap();
+        assert_eq!(v.len(), 3);
+        assert_eq!(v.as_slice(), &[1, 2, 3]);
+        assert!(v.extend_from_slice(&[4, 5]).is_err());
+        assert_eq!(v.len(), 3);
+        assert_eq!(v.as_slice(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn from_slice() {
+        // Successful construction
+        let v: $flavor<u8, 4> = $flavor::from_slice(&[1, 2, 3]).unwrap();
+        assert_eq!(v.len(), 3);
+        assert_eq!(v.as_slice(), &[1, 2, 3]);
+
+        // Slice too large
+        assert!($flavor::<u8, 2>::from_slice(&[1, 2, 3]).is_err());
+    }
+
+    #[test]
+    fn starts_with() {
+        let v: $flavor<_, 8> = $flavor::from_slice(b"ab").unwrap();
+        assert!(v.starts_with(&[]));
+        assert!(v.starts_with(b""));
+        assert!(v.starts_with(b"a"));
+        assert!(v.starts_with(b"ab"));
+        assert!(!v.starts_with(b"abc"));
+        assert!(!v.starts_with(b"ba"));
+        assert!(!v.starts_with(b"b"));
+    }
+
+    #[test]
+    fn ends_with() {
+        let v: $flavor<_, 8> = $flavor::from_slice(b"ab").unwrap();
+        assert!(v.ends_with(&[]));
+        assert!(v.ends_with(b""));
+        assert!(v.ends_with(b"b"));
+        assert!(v.ends_with(b"ab"));
+        assert!(!v.ends_with(b"abc"));
+        assert!(!v.ends_with(b"ba"));
+        assert!(!v.ends_with(b"a"));
+    }
+
+    #[test]
+    fn zero_capacity() {
+        let mut v: $flavor<u8, 0> = $flavor::new();
+        // Validate capacity
+        assert_eq!(v.capacity(), 0);
+
+        // Make sure there is no capacity
+        assert!(v.push(1).is_err());
+
+        // Validate length
+        assert_eq!(v.len(), 0);
+
+        // Validate pop
+        assert_eq!(v.pop(), None);
+
+        // Validate slice
+        assert_eq!(v.as_slice(), &[]);
+
+        // Validate empty
+        assert!(v.is_empty());
+
+        // Validate full
+        assert!(v.is_full());
+    }
+    };
+}
+
+#[cfg(test)]
+mod vec_tests {
+    use core::fmt::Write;
 
     macro_rules! droppable {
         () => {
@@ -934,125 +1245,6 @@ mod tests {
 
         assert_eq!(unsafe { COUNT }, 0);
     }
-
-    #[test]
-    fn eq() {
-        let mut xs: Vec<i32, 4> = Vec::new();
-        let mut ys: Vec<i32, 8> = Vec::new();
-
-        assert_eq!(xs, ys);
-
-        xs.push(1).unwrap();
-        ys.push(1).unwrap();
-
-        assert_eq!(xs, ys);
-    }
-
-    #[test]
-    fn cmp() {
-        let mut xs: Vec<i32, 4> = Vec::new();
-        let mut ys: Vec<i32, 4> = Vec::new();
-
-        assert_eq!(xs, ys);
-
-        xs.push(1).unwrap();
-        ys.push(2).unwrap();
-
-        assert!(xs < ys);
-    }
-
-    #[test]
-    fn cmp_heterogenous_size() {
-        let mut xs: Vec<i32, 4> = Vec::new();
-        let mut ys: Vec<i32, 8> = Vec::new();
-
-        assert_eq!(xs, ys);
-
-        xs.push(1).unwrap();
-        ys.push(2).unwrap();
-
-        assert!(xs < ys);
-    }
-
-    #[test]
-    fn full() {
-        let mut v: Vec<i32, 4> = Vec::new();
-
-        v.push(0).unwrap();
-        v.push(1).unwrap();
-        v.push(2).unwrap();
-        v.push(3).unwrap();
-
-        assert!(v.push(4).is_err());
-    }
-
-    #[test]
-    fn iter() {
-        let mut v: Vec<i32, 4> = Vec::new();
-
-        v.push(0).unwrap();
-        v.push(1).unwrap();
-        v.push(2).unwrap();
-        v.push(3).unwrap();
-
-        let mut items = v.iter();
-
-        assert_eq!(items.next(), Some(&0));
-        assert_eq!(items.next(), Some(&1));
-        assert_eq!(items.next(), Some(&2));
-        assert_eq!(items.next(), Some(&3));
-        assert_eq!(items.next(), None);
-    }
-
-    #[test]
-    fn iter_mut() {
-        let mut v: Vec<i32, 4> = Vec::new();
-
-        v.push(0).unwrap();
-        v.push(1).unwrap();
-        v.push(2).unwrap();
-        v.push(3).unwrap();
-
-        let mut items = v.iter_mut();
-
-        assert_eq!(items.next(), Some(&mut 0));
-        assert_eq!(items.next(), Some(&mut 1));
-        assert_eq!(items.next(), Some(&mut 2));
-        assert_eq!(items.next(), Some(&mut 3));
-        assert_eq!(items.next(), None);
-    }
-
-    #[test]
-    fn collect_from_iter() {
-        let slice = &[1, 2, 3];
-        let vec: Vec<i32, 4> = slice.iter().cloned().collect();
-        assert_eq!(&vec, slice);
-    }
-
-    #[test]
-    #[should_panic]
-    fn collect_from_iter_overfull() {
-        let slice = &[1, 2, 3];
-        let _vec = slice.iter().cloned().collect::<Vec<_, 2>>();
-    }
-
-    #[test]
-    fn iter_move() {
-        let mut v: Vec<i32, 4> = Vec::new();
-        v.push(0).unwrap();
-        v.push(1).unwrap();
-        v.push(2).unwrap();
-        v.push(3).unwrap();
-
-        let mut items = v.into_iter();
-
-        assert_eq!(items.next(), Some(0));
-        assert_eq!(items.next(), Some(1));
-        assert_eq!(items.next(), Some(2));
-        assert_eq!(items.next(), Some(3));
-        assert_eq!(items.next(), None);
-    }
-
     #[test]
     fn iter_move_drop() {
         droppable!();
@@ -1089,173 +1281,19 @@ mod tests {
 
         assert_eq!(unsafe { COUNT }, 0);
     }
+    vec_test!(Vec, crate::Vec);
+}
+#[cfg(test)]
+mod copy_vec_tests {
+    use core::fmt::Write;
+    vec_test!(CopyVec, crate::CopyVec);
 
     #[test]
-    fn push_and_pop() {
-        let mut v: Vec<i32, 4> = Vec::new();
-        assert_eq!(v.len(), 0);
-
-        assert_eq!(v.pop(), None);
-        assert_eq!(v.len(), 0);
-
-        v.push(0).unwrap();
-        assert_eq!(v.len(), 1);
-
-        assert_eq!(v.pop(), Some(0));
-        assert_eq!(v.len(), 0);
-
-        assert_eq!(v.pop(), None);
-        assert_eq!(v.len(), 0);
-    }
-
-    #[test]
-    fn resize_size_limit() {
-        let mut v: Vec<u8, 4> = Vec::new();
-
-        v.resize(0, 0).unwrap();
-        v.resize(4, 0).unwrap();
-        v.resize(5, 0).err().expect("full");
-    }
-
-    #[test]
-    fn resize_length_cases() {
-        let mut v: Vec<u8, 4> = Vec::new();
-
-        assert_eq!(v.len(), 0);
-
-        // Grow by 1
-        v.resize(1, 0).unwrap();
-        assert_eq!(v.len(), 1);
-
-        // Grow by 2
-        v.resize(3, 0).unwrap();
-        assert_eq!(v.len(), 3);
-
-        // Resize to current size
-        v.resize(3, 0).unwrap();
-        assert_eq!(v.len(), 3);
-
-        // Shrink by 1
-        v.resize(2, 0).unwrap();
-        assert_eq!(v.len(), 2);
-
-        // Shrink by 2
-        v.resize(0, 0).unwrap();
-        assert_eq!(v.len(), 0);
-    }
-
-    #[test]
-    fn resize_contents() {
-        let mut v: Vec<u8, 4> = Vec::new();
-
-        // New entries take supplied value when growing
-        v.resize(1, 17).unwrap();
-        assert_eq!(v[0], 17);
-
-        // Old values aren't changed when growing
-        v.resize(2, 18).unwrap();
-        assert_eq!(v[0], 17);
-        assert_eq!(v[1], 18);
-
-        // Old values aren't changed when length unchanged
-        v.resize(2, 0).unwrap();
-        assert_eq!(v[0], 17);
-        assert_eq!(v[1], 18);
-
-        // Old values aren't changed when shrinking
-        v.resize(1, 0).unwrap();
-        assert_eq!(v[0], 17);
-    }
-
-    #[test]
-    fn resize_default() {
-        let mut v: Vec<u8, 4> = Vec::new();
-
-        // resize_default is implemented using resize, so just check the
-        // correct value is being written.
-        v.resize_default(1).unwrap();
-        assert_eq!(v[0], 0);
-    }
-
-    #[test]
-    fn write() {
-        let mut v: Vec<u8, 4> = Vec::new();
-        write!(v, "{:x}", 1234).unwrap();
-        assert_eq!(&v[..], b"4d2");
-    }
-
-    #[test]
-    fn extend_from_slice() {
-        let mut v: Vec<u8, 4> = Vec::new();
-        assert_eq!(v.len(), 0);
-        v.extend_from_slice(&[1, 2]).unwrap();
-        assert_eq!(v.len(), 2);
-        assert_eq!(v.as_slice(), &[1, 2]);
-        v.extend_from_slice(&[3]).unwrap();
-        assert_eq!(v.len(), 3);
-        assert_eq!(v.as_slice(), &[1, 2, 3]);
-        assert!(v.extend_from_slice(&[4, 5]).is_err());
-        assert_eq!(v.len(), 3);
-        assert_eq!(v.as_slice(), &[1, 2, 3]);
-    }
-
-    #[test]
-    fn from_slice() {
-        // Successful construction
-        let v: Vec<u8, 4> = Vec::from_slice(&[1, 2, 3]).unwrap();
-        assert_eq!(v.len(), 3);
-        assert_eq!(v.as_slice(), &[1, 2, 3]);
-
-        // Slice too large
-        assert!(Vec::<u8, 2>::from_slice(&[1, 2, 3]).is_err());
-    }
-
-    #[test]
-    fn starts_with() {
-        let v: Vec<_, 8> = Vec::from_slice(b"ab").unwrap();
-        assert!(v.starts_with(&[]));
-        assert!(v.starts_with(b""));
-        assert!(v.starts_with(b"a"));
-        assert!(v.starts_with(b"ab"));
-        assert!(!v.starts_with(b"abc"));
-        assert!(!v.starts_with(b"ba"));
-        assert!(!v.starts_with(b"b"));
-    }
-
-    #[test]
-    fn ends_with() {
-        let v: Vec<_, 8> = Vec::from_slice(b"ab").unwrap();
-        assert!(v.ends_with(&[]));
-        assert!(v.ends_with(b""));
-        assert!(v.ends_with(b"b"));
-        assert!(v.ends_with(b"ab"));
-        assert!(!v.ends_with(b"abc"));
-        assert!(!v.ends_with(b"ba"));
-        assert!(!v.ends_with(b"a"));
-    }
-
-    #[test]
-    fn zero_capacity() {
-        let mut v: Vec<u8, 0> = Vec::new();
-        // Validate capacity
-        assert_eq!(v.capacity(), 0);
-
-        // Make sure there is no capacity
-        assert!(v.push(1).is_err());
-
-        // Validate length
-        assert_eq!(v.len(), 0);
-
-        // Validate pop
-        assert_eq!(v.pop(), None);
-
-        // Validate slice
-        assert_eq!(v.as_slice(), &[]);
-
-        // Validate empty
-        assert!(v.is_empty());
-
-        // Validate full
-        assert!(v.is_full());
+    fn copies() {
+        let mut cv: CopyVec<usize, 8> = CopyVec::new();
+        let cv2 = cv;
+        cv.push(1).unwrap();
+        assert_eq!(1, cv.len);
+        assert_eq!(0, cv2.len);
     }
 }

@@ -83,7 +83,7 @@ pub use linear_map::LinearMap;
 #[cfg(all(has_cas, feature = "cas"))]
 pub use pool::singleton::arc::Arc;
 pub use string::String;
-pub use vec::Vec;
+pub use vec::{Vec, CopyVec};
 
 mod deque;
 mod histbuf;
