@@ -2,11 +2,11 @@ use core::{cmp::Ordering, fmt, fmt::Write, hash, ops, str};
 
 use hash32;
 
-use crate::Vec;
+use crate::CopyVec;
 
 /// A fixed capacity [`String`](https://doc.rust-lang.org/std/string/struct.String.html)
 pub struct String<const N: usize> {
-    vec: Vec<u8, N>,
+    vec: CopyVec<u8, N>,
 }
 
 impl<const N: usize> String<N> {
@@ -27,7 +27,7 @@ impl<const N: usize> String<N> {
     /// ```
     #[inline]
     pub const fn new() -> Self {
-        Self { vec: Vec::new() }
+        Self { vec: CopyVec::new() }
     }
 
     /// Converts a `String` into a byte vector.
@@ -48,7 +48,7 @@ impl<const N: usize> String<N> {
     /// assert_eq!(&['a' as u8, 'b' as u8], &b[..]);
     /// ```
     #[inline]
-    pub fn into_bytes(self) -> Vec<u8, N> {
+    pub fn into_bytes(self) -> CopyVec<u8, N> {
         self.vec
     }
 
@@ -114,7 +114,7 @@ impl<const N: usize> String<N> {
     /// }
     /// assert_eq!(s, "olleh");
     /// ```
-    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8, N> {
+    pub unsafe fn as_mut_vec(&mut self) -> &mut CopyVec<u8, N> {
         &mut self.vec
     }
 
@@ -315,6 +315,10 @@ impl<const N: usize> Clone for String<N> {
     }
 }
 
+impl<const N: usize> Copy for String<N>{
+
+}
+
 impl<const N: usize> fmt::Debug for String<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <str as fmt::Debug>::fmt(self, f)
@@ -477,7 +481,7 @@ impl_from_num!(u64, 20);
 
 #[cfg(test)]
 mod tests {
-    use crate::{String, Vec};
+    use crate::{CopyVec, String};
 
     #[test]
     fn static_new() {
@@ -573,7 +577,7 @@ mod tests {
     #[test]
     fn into_bytes() {
         let s: String<4> = String::from("ab");
-        let b: Vec<u8, 4> = s.into_bytes();
+        let b: CopyVec<u8, 4> = s.into_bytes();
         assert_eq!(b.len(), 2);
         assert_eq!(&['a' as u8, 'b' as u8], &b[..]);
     }
