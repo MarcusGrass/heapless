@@ -309,9 +309,7 @@ impl<const N: usize> str::FromStr for String<N> {
 
 impl<const N: usize> Clone for String<N> {
     fn clone(&self) -> Self {
-        Self {
-            vec: self.vec.clone(),
-        }
+        *self
     }
 }
 
@@ -491,7 +489,7 @@ mod tests {
     #[test]
     fn clone() {
         let s1: String<20> = String::from("abcd");
-        let mut s2 = s1.clone();
+        let mut s2 = s1;
         s2.push_str(" efgh").unwrap();
 
         assert_eq!(s1, "abcd");
