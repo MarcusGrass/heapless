@@ -35,13 +35,12 @@ macro_rules! impl_vec {
 /// }
 /// assert_eq!(*vec, [7, 1, 2, 3]);
 /// ```
-pub struct $flavor<T: $($restrict)*, const N: usize>  {
+pub struct $flavor<T, const N: usize>  {
     buffer: [MaybeUninit<T>; N],
     len: usize,
 }
 
 impl<T: $($restrict)*, const N: usize> $flavor<T, N> {
-    const INIT: MaybeUninit<T> = MaybeUninit::uninit();
 
 
     /// Constructs a new vector with a fixed capacity of `N` and fills it
@@ -806,13 +805,9 @@ where
     }
 }
 
-    };
-}
-
-impl_vec!(Vec, VecIntoIter,);
-
-impl<T, const N: usize> Vec<T, N> {
-
+// Have to separate this out as T can't be restricted in const functions
+impl<T, const N: usize> $flavor<T, N> {
+    const INIT: MaybeUninit<T> = MaybeUninit::uninit();
     /// Constructs a new, empty vector with a fixed capacity of `N`
     ///
     /// # Examples
@@ -842,6 +837,13 @@ impl<T, const N: usize> Vec<T, N> {
     }
 
 }
+    };
+
+}
+
+
+impl_vec!(Vec, VecIntoIter,);
+
 
 impl<T, const N: usize> Drop for Vec<T, N> {
     fn drop(&mut self) {
@@ -864,39 +866,7 @@ impl<T, const N: usize> Drop for VecIntoIter<T, N> {
 }
 
 impl_vec!(CopyVec, CopyVecIntoIter, Copy);
-impl<T: Copy, const N: usize> CopyVec<T, N> {
 
-    /// Constructs a new, empty vector with a fixed capacity of `N`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use heapless::Vec;
-    ///
-    /// // allocate the vector on the stack
-    /// let mut x: Vec<u8, 16> = Vec::new();
-    ///
-    /// // allocate the vector in a static variable
-    /// static mut X: Vec<u8, 16> = Vec::new();
-    /// ```
-    /// `Vec` `const` constructor; wrap the returned value in [`Vec`](../struct.Vec.html)
-    pub fn new() -> Self {
-        // Const assert N >= 0
-        crate::sealed::greater_than_eq_0::<N>();
-
-        Self {
-            buffer: [Self::INIT; N],
-            len: 0,
-        }
-    }
-
-    /// Returns the maximum number of elements the vector can hold.
-    pub fn capacity(&self) -> usize {
-        N
-    }
-
-
-}
 impl<T: Copy, const N: usize> Copy for CopyVec<T, N>  {
 
 }
@@ -908,6 +878,11 @@ macro_rules! vec_test {
     ($flavor: ident, $flavor_path: path) => {
         use $flavor_path;
 
+
+    #[test]
+    fn static_new() {
+        static mut _V: $flavor<i32, 4> = $flavor::new();
+    }
 
     #[test]
     fn stack_new() {
@@ -1258,10 +1233,6 @@ mod vec_tests {
         };
     }
 
-    #[test]
-    fn static_new() {
-        static mut _V: Vec<i32, 4> = Vec::new();
-    }
 
     #[test]
     fn drop() {
