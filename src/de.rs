@@ -1,5 +1,5 @@
 use crate::{
-    binary_heap::Kind as BinaryHeapKind, BinaryHeap, IndexMap, IndexSet, LinearMap, String, Vec,
+    binary_heap::Kind as BinaryHeapKind, BinaryHeap, IndexMap, IndexSet, LinearMap, String, Vec, CopyVec
 };
 use core::{fmt, marker::PhantomData};
 use hash32::{BuildHasherDefault, Hash, Hasher};
@@ -90,7 +90,9 @@ where
     }
 }
 
-impl<'de, T, const N: usize> Deserialize<'de> for Vec<T, N>
+macro_rules! impl_vec_de {
+    ($flavor: ident, $($restrict: path)?) => {
+    impl<'de, T: $($restrict)*, const N: usize> Deserialize<'de> for $flavor<T, N>
 where
     T: Deserialize<'de>,
 {
@@ -100,11 +102,11 @@ where
     {
         struct ValueVisitor<'de, T, const N: usize>(PhantomData<(&'de (), T)>);
 
-        impl<'de, T, const N: usize> serde::de::Visitor<'de> for ValueVisitor<'de, T, N>
+        impl<'de, T: $($restrict)*, const N: usize> serde::de::Visitor<'de> for ValueVisitor<'de, T, N>
         where
             T: Deserialize<'de>,
         {
-            type Value = Vec<T, N>;
+            type Value = $flavor<T, N>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("a sequence")
@@ -114,7 +116,7 @@ where
             where
                 A: SeqAccess<'de>,
             {
-                let mut values = Vec::new();
+                let mut values = $flavor::new();
 
                 while let Some(value) = seq.next_element()? {
                     if values.push(value).is_err() {
@@ -128,6 +130,12 @@ where
         deserializer.deserialize_seq(ValueVisitor(PhantomData))
     }
 }
+    }
+}
+
+impl_vec_de!(Vec,);
+impl_vec_de!(CopyVec, Copy);
+
 
 // Dictionaries
 
