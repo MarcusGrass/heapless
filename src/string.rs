@@ -297,6 +297,14 @@ impl<'a, const N: usize> From<&'a str> for String<N> {
     }
 }
 
+impl<const N: usize> From<CopyVec<u8, N>> for String<N> {
+    fn from(vec: CopyVec<u8, N>) -> Self {
+        String {
+            vec
+        }
+    }
+}
+
 impl<const N: usize> str::FromStr for String<N> {
     type Err = ();
 
@@ -674,5 +682,12 @@ mod tests {
         assert!(s.is_empty());
         assert_eq!(0, s.len());
         assert_eq!(8, s.capacity());
+    }
+
+    #[test]
+    fn from_copyvec() {
+        let s1: String<8> = String::from("foo");
+        let s2: String<8> = String::from(CopyVec::from_slice("foo".as_bytes()).unwrap());
+        assert_eq!(s1, s2);
     }
 }
